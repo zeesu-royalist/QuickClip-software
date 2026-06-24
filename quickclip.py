@@ -24,6 +24,6 @@ if __name__ == "__main__":
     try:
         start_listener()
     except KeyboardInterrupt:
-        print("\nBand ho gaya. Alvida! 👋")
+        print("\n 👋")
     except ImportError:
-        print("ERROR: pip3 install pynput pyperclip pillow watchdog --break-system-packages")
+        print("ERROR: pip install -r requirements.txt")

@@ -33,6 +33,8 @@ def start_listener():
             temp_file = SHOTS_DIR / f"hotkey_{ts}.png"
 
             if OS == "Windows":
+                
+                # pyrefly: ignore [missing-import]
                 import pygetwindow as gw
                 from PIL import ImageGrab
 
@@ -62,14 +64,14 @@ def start_listener():
     _print_banner()
 
     if OS == "Windows":
-        import keyboard
+        import keyboard as win_keyboard
 
-        keyboard.add_hotkey("ctrl+alt+q", take_screenshot)
+        win_keyboard.add_hotkey("ctrl+alt+q", take_screenshot)
         print("⌨️ Windows hotkey registered: Ctrl+Alt+Q")
 
-        keyboard.wait()
+        win_keyboard.wait()
     else:
-        from pynput import keyboard
+        from pynput import keyboard as pynput_keyboard
 
         current_keys = set()
 
@@ -77,13 +79,13 @@ def start_listener():
             current_keys.add(key)
 
             ctrl = (
-                keyboard.Key.ctrl_l in current_keys or
-                keyboard.Key.ctrl_r in current_keys
+                pynput_keyboard.Key.ctrl_l in current_keys or
+                pynput_keyboard.Key.ctrl_r in current_keys
             )
 
             alt = (
-                keyboard.Key.alt_l in current_keys or
-                keyboard.Key.alt_r in current_keys
+                pynput_keyboard.Key.alt_l in current_keys or
+                pynput_keyboard.Key.alt_r in current_keys
             )
 
             try:
@@ -99,7 +101,7 @@ def start_listener():
 
         print("⌨️ Linux/macOS hotkey registered: Ctrl+Alt+Q")
 
-        listener = keyboard.Listener(
+        listener = pynput_keyboard.Listener(
             on_press=on_press,
             on_release=on_release
         )
@@ -109,7 +111,7 @@ def start_listener():
 
 def _print_banner(no_hotkey: bool = False):
     print("=" * 56)
-    print("   📋 QuickClip chal raha hai!")
+    print("   📋 QuickClip is running :")
     print("   ✅ Clipboard text: auto-monitor active")
     if SCREENSHOT_WATCH_DIRS:
         print(f"   📸 Screenshots: watching {len(SCREENSHOT_WATCH_DIRS)} folder(s)")
@@ -121,5 +123,5 @@ def _print_banner(no_hotkey: bool = False):
         print("   ⌨️  Shortcut: Ctrl + Alt + Q")
     print(f"   📁 Save dir : {SAVE_DIR}")
     print(f"   🌐 Viewer  : {SAVE_DIR}/viewer.html")
-    print("   Rokne ke liye: Ctrl+C")
+    print("   To Stop: Ctrl+C")
     print("=" * 56)
