@@ -1,0 +1,14 @@
+{
+  "name": "quickclip-backend",
+  "version": "1.0.0",
+  "description": "Node.js REST API for QuickClip Notes",
+  "main": "server.js",
+  "scripts": {
+    "dev": "npx nodemon server.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1"
+  }
+}
