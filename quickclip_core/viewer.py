@@ -469,12 +469,6 @@ def generate_viewer():
     if (ss) document.getElementById('shots-panel').scrollTop = parseInt(ss);
   }});
 
-  // ── Auto-reload when not focused or on a second monitor ───────────────────
-  window.addEventListener('focus', () => location.reload());
-  setInterval(() => {{
-    if (!document.hasFocus() && document.visibilityState === 'visible')
-      location.reload();
-  }}, 5000);
 </script>
 </body>
 </html>"""

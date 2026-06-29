@@ -19,6 +19,7 @@ It handles background text polling, automatically tracks screenshot directories,
   - Persistent scroll position and search queries across reloads.
   - Image lightbox zoom view for screenshots.
   - Focus-triggered and timed auto-reloading.
+- **☁️ Google Sheets & Drive Sync (Webhook)**: Automatically syncs copied text and captured screenshots to a Google Sheet via a Google Apps Script Webhook. Screenshots are uploaded directly to Google Drive and linked in the sheet.
 
 ---
 
@@ -97,3 +98,65 @@ All logged data is saved inside your user home directory:
 - **`screenshots.json`**: Stores screenshot metadata and inline base64 thumbnails (up to 200 screenshots).
 - **`screenshots/`**: Stores local copy images of captured/detected screenshots.
 - **`viewer.html`**: The HTML UI dashboard.
+- **`config.json`**: Add your `WEBHOOK_URL` here to enable Google Sheets integration.
+
+---
+
+## ☁️ Google Sheets & Drive Integration
+
+QuickClip can automatically log your clipboard text and upload screenshots to Google Drive, displaying them beautifully inside a Google Sheet.
+
+### Setup Instructions
+
+1. **Create a Google Apps Script Webhook**:
+   - Open your Google Sheet, go to **Extensions > Apps Script**.
+   - Paste the following code (replace `YOUR_DRIVE_FOLDER_ID_HERE` with your Drive folder ID):
+
+   ```javascript
+   const FOLDER_ID = "YOUR_DRIVE_FOLDER_ID_HERE"; 
+
+   function doPost(e) {
+     try {
+       const data = JSON.parse(e.postData.contents);
+       const sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+       
+       let savedContent = data.content;
+       
+       if (data.type === "image") {
+         const split = data.content.split('base64,');
+         if (split.length === 2) {
+           const mime = split[0].split(':')[1].split(';')[0];
+           const bytes = Utilities.base64Decode(split[1]);
+           const blob = Utilities.newBlob(bytes, mime, data.filename || "screenshot.png");
+           
+           const folder = DriveApp.getFolderById(FOLDER_ID);
+           const file = folder.createFile(blob);
+           file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+           
+           const fileId = file.getId();
+           savedContent = `=IMAGE("https://drive.google.com/uc?export=view&id=${fileId}")`;
+         }
+       }
+       
+       sheet.appendRow([data.timestamp, data.username, data.type, savedContent]);
+       if (data.type === "image") sheet.setRowHeights(sheet.getLastRow(), 1, 200);
+       
+       return ContentService.createTextOutput(JSON.stringify({ "status": "success" })).setMimeType(ContentService.MimeType.JSON);
+     } catch (error) {
+       return ContentService.createTextOutput(JSON.stringify({ "status": "error", "message": error.toString() })).setMimeType(ContentService.MimeType.JSON);
+     }
+   }
+   ```
+   - Click **Deploy > New deployment**, select **Web app**.
+   - Set "Execute as" to **Me**, and "Who has access" to **Anyone**.
+   - Deploy and copy the Web App URL.
+
+2. **Configure QuickClip**:
+   - In your `~/QuickClip_Notes` directory, create a `config.json` file.
+   - Add your Webhook URL:
+   ```json
+   {
+     "WEBHOOK_URL": "https://script.google.com/macros/s/YOUR_URL_HERE/exec"
+   }
+   ```
+   - Restart QuickClip! Your Google Sheet should have 4 columns: `Timestamp`, `Username`, `Type`, and `Content`.

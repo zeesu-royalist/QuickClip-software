@@ -89,12 +89,23 @@ def start_listener():
             )
 
             try:
-                q_pressed = key.char.lower() == "q"
+                char_key = key.char.lower() if hasattr(key, 'char') and key.char else ""
             except:
-                q_pressed = False
+                char_key = ""
+
+            q_pressed = char_key == "q"
 
             if ctrl and alt and q_pressed:
                 take_screenshot()
+            elif ctrl and char_key in ("c", "x"):
+                import time
+                def _trigger():
+                    time.sleep(0.15)
+                    from quickclip_core.clipboard import check_now as check_text
+                    from quickclip_core.screenshot import check_now as check_image
+                    check_text()
+                    check_image()
+                threading.Thread(target=_trigger, daemon=True).start()
 
         def on_release(key):
             current_keys.discard(key)

@@ -29,6 +29,14 @@ def add_clip(text: str) -> bool:
         return False   # exact duplicate at top — skip
     clips.insert(0, {"text": text, "time": datetime.now().strftime("%d %b %Y, %I:%M %p")})
     save_clips(clips[:500])
+    
+    # Send to webhook asynchronously
+    try:
+        from quickclip_core.webhook import send_to_webhook
+        send_to_webhook("text", text, datetime.now().strftime("%d %b %Y, %I:%M %p"))
+    except Exception:
+        pass
+        
     return True
 
 # ── Screenshot Storage Operations ──────────────────────────────────────────────
@@ -150,6 +158,18 @@ def add_screenshot(src_path: Path) -> bool:
         "thumb_b64": thumb_b64,   # inline data-URI thumbnail
     })
     save_shots(shots[:200])   # keep at most 200 screenshots
+    
+    # Send to webhook asynchronously with full image
+    try:
+        with open(dest_path, "rb") as f:
+            img_data = f.read()
+        mime = "image/png" if dest_path.suffix.lower() == ".png" else "image/jpeg"
+        full_b64 = f"data:{mime};base64," + base64.b64encode(img_data).decode()
+        from quickclip_core.webhook import send_to_webhook
+        send_to_webhook("image", full_b64, timestamp.strftime("%d %b %Y, %I:%M %p"), dest_name)
+    except Exception:
+        pass
+        
     return True
 
 def _make_thumbnail_b64(img_path: Path, max_width: int = 300) -> str:

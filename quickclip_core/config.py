@@ -16,9 +16,20 @@ SAVE_DIR        = Path.home() / "QuickClip_Notes"
 CLIPS_FILE      = SAVE_DIR / "clips.json"
 SHOTS_FILE      = SAVE_DIR / "screenshots.json"   # screenshot metadata store
 SHOTS_DIR       = SAVE_DIR / "screenshots"         # local copies of screenshots
+CONFIG_FILE     = SAVE_DIR / "config.json"
 
 SAVE_DIR.mkdir(exist_ok=True)
 SHOTS_DIR.mkdir(exist_ok=True)
+
+# ── Webhook Configuration ──────────────────────────────────────────────────────
+WEBHOOK_URL = ""
+if CONFIG_FILE.exists():
+    import json
+    try:
+        _conf = json.loads(CONFIG_FILE.read_text(encoding="utf-8"))
+        WEBHOOK_URL = _conf.get("WEBHOOK_URL", "")
+    except Exception:
+        pass
 
 OS = platform.system()   # "Windows" | "Linux" | "Darwin"
 

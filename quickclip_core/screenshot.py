@@ -100,6 +100,44 @@ def screenshot_monitor():
         start_screenshot_monitor_polling()
     # else watchdog is running in its own thread
 
+# Module-level variables to track the last checked clipboard image hash
+_last_image_hash = ""
+_last_image_lock = threading.Lock()
+
+def check_now():
+    """Immediately check system clipboard for image content and save if new."""
+    global _last_image_hash
+    if OS not in ("Darwin", "Linux"):
+        return
+    try:
+        from PIL import ImageGrab
+        img = ImageGrab.grabclipboard()
+        if img is None:
+            return
+        # Convert to bytes to hash
+        import io
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="PNG")
+        raw = buf.getvalue()
+        h = hashlib.md5(raw).hexdigest()
+        
+        with _last_image_lock:
+            if h == _last_image_hash:
+                return
+            _last_image_hash = h
+            
+        # Save to screenshots dir
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        dest = SHOTS_DIR / f"clipboard_{ts}.png"
+        dest.write_bytes(raw)
+        if add_screenshot(dest):
+            generate_viewer()
+            print(f"  📸 Clipboard image saved: {dest.name}")
+    except ImportError:
+        pass
+    except Exception:
+        pass
+
 def _start_clipboard_image_monitor():
     """
     Poll the clipboard for image data (macOS / Linux).
@@ -107,30 +145,11 @@ def _start_clipboard_image_monitor():
     Requires Pillow (PIL) to grab the image.
     """
     def _poll():
-        last_hash = ""
+        poll_interval = 5.0 if OS == "Linux" else 1.0
         while True:
-            time.sleep(1)
+            time.sleep(poll_interval)
             try:
-                from PIL import ImageGrab
-                img = ImageGrab.grabclipboard()
-                if img is None:
-                    continue
-                # Convert to bytes to hash
-                import io
-                buf = io.BytesIO()
-                img.convert("RGB").save(buf, format="PNG")
-                raw = buf.getvalue()
-                h = hashlib.md5(raw).hexdigest()
-                if h == last_hash:
-                    continue
-                last_hash = h
-                # Save to screenshots dir
-                ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-                dest = SHOTS_DIR / f"clipboard_{ts}.png"
-                dest.write_bytes(raw)
-                if add_screenshot(dest):
-                    generate_viewer()
-                    print(f"  📸 Clipboard image saved: {dest.name}")
+                check_now()
             except ImportError:
                 break   # Pillow not installed — silently stop
             except Exception:
