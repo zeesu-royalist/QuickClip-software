@@ -17,6 +17,61 @@ if OS == "Windows":
         except Exception:
             pass
 
+def _is_ubuntu() -> bool:
+    if OS != "Linux":
+        return False
+    try:
+        with open("/etc/os-release", "r", encoding="utf-8") as f:
+            return "ubuntu" in f.read().lower()
+    except Exception:
+        return False
+
+
+def _get_ubuntu_active_window_geometry():
+    try:
+        from Xlib import X, display
+        d = display.Display()
+        root = d.screen().root
+        NET_ACTIVE_WINDOW = d.intern_atom('_NET_ACTIVE_WINDOW')
+        active = root.get_full_property(NET_ACTIVE_WINDOW, X.AnyPropertyType)
+        if not active or not active.value:
+            return None
+
+        window_id = active.value[0]
+        win = d.create_resource_object('window', window_id)
+        trans = win.translate_coords(root, 0, 0)
+        left, top = trans.dest_x, trans.dest_y if hasattr(trans, 'dest_x') else trans[0], trans[1]
+        geom = win.get_geometry()
+        return (left, top, left + geom.width, top + geom.height)
+    except Exception:
+        pass
+
+    try:
+        import re
+        import subprocess
+        output = subprocess.check_output(['xprop', '-root', '_NET_ACTIVE_WINDOW'], text=True)
+        match = re.search(r'window id # (0x[0-9a-fA-F]+)', output)
+        if not match:
+            return None
+        window_id = match.group(1)
+        xwininfo = subprocess.check_output(['xwininfo', '-id', window_id], text=True)
+        left = top = width = height = None
+        for line in xwininfo.splitlines():
+            if 'Absolute upper-left X:' in line:
+                left = int(line.split(':')[1].strip().split()[0])
+            elif 'Absolute upper-left Y:' in line:
+                top = int(line.split(':')[1].strip().split()[0])
+            elif 'Width:' in line:
+                width = int(line.split(':')[1].strip())
+            elif 'Height:' in line:
+                height = int(line.split(':')[1].strip())
+        if None in (left, top, width, height):
+            return None
+        return (left, top, left + width, top + height)
+    except Exception:
+        return None
+
+
 def start_listener():
     """Start all background monitors and the optional keyboard shortcut listener."""
 
@@ -33,13 +88,11 @@ def start_listener():
             temp_file = SHOTS_DIR / f"hotkey_{ts}.png"
 
             if OS == "Windows":
-                
                 # pyrefly: ignore [missing-import]
                 import pygetwindow as gw
                 from PIL import ImageGrab
 
                 win = gw.getActiveWindow()
-
                 if not win:
                     print("No active window found")
                     return
@@ -52,6 +105,21 @@ def start_listener():
                 )
 
                 img = ImageGrab.grab(bbox=bbox)
+                img.save(str(temp_file))
+
+            elif _is_ubuntu():
+                coords = _get_ubuntu_active_window_geometry()
+                if not coords:
+                    print("No active window found")
+                    return
+
+                try:
+                    from PIL import ImageGrab
+                    img = ImageGrab.grab(bbox=coords)
+                except Exception:
+                    import pyautogui
+                    img = pyautogui.screenshot(region=(coords[0], coords[1], coords[2] - coords[0], coords[3] - coords[1]))
+
                 img.save(str(temp_file))
 
             if add_screenshot(temp_file):
