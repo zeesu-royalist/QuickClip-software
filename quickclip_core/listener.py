@@ -81,7 +81,7 @@ def start_listener():
     # 2. Screenshot monitor (watchdog or polling + optional clipboard-image poll)
     screenshot_monitor()
 
-    # 3. Keyboard shortcut listener (Ctrl+Alt+Q)
+    # 3. Keyboard shortcut listener (Ctrl+Alt+Q / Cmd+I)
     def take_screenshot():
         try:
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -122,6 +122,42 @@ def start_listener():
 
                 img.save(str(temp_file))
 
+            elif OS == "Darwin":
+                bounds = None
+                try:
+                    from AppKit import NSWorkspace
+                    from Quartz import CGWindowListCopyWindowInfo, kCGWindowListOptionOnScreenOnly, kCGNullWindowID
+                    
+                    active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+                    if active_app:
+                        app_pid = active_app.processIdentifier()
+                        options = kCGWindowListOptionOnScreenOnly
+                        window_list = CGWindowListCopyWindowInfo(options, kCGNullWindowID)
+                        for window in window_list:
+                            if window.get('kCGWindowOwnerPID') == app_pid:
+                                if window.get('kCGWindowLayer', 0) == 0:
+                                    b = window.get('kCGWindowBounds')
+                                    if b:
+                                        x = int(b.get('X', 0))
+                                        y = int(b.get('Y', 0))
+                                        w = int(b.get('Width', 0))
+                                        h = int(b.get('Height', 0))
+                                        bounds = (x, y, x + w, y + h)
+                                        break
+                except Exception:
+                    pass
+
+                try:
+                    from PIL import ImageGrab
+                    if bounds:
+                        img = ImageGrab.grab(bbox=bounds)
+                    else:
+                        img = ImageGrab.grab()
+                    img.save(str(temp_file))
+                except Exception as e:
+                    print(f"Failed to capture screenshot on macOS: {e}")
+                    return
+
             if add_screenshot(temp_file):
                 generate_viewer()
                 print(f"📸 Screenshot captured: {temp_file.name}")
@@ -138,6 +174,41 @@ def start_listener():
         print("⌨️ Windows hotkey registered: Ctrl+Alt+Q")
 
         win_keyboard.wait()
+    elif OS == "Darwin":
+        from pynput import keyboard as pynput_keyboard
+
+        current_keys = set()
+
+        def on_press(key):
+            current_keys.add(key)
+
+            cmd_pressed = (
+                pynput_keyboard.Key.cmd in current_keys or
+                pynput_keyboard.Key.cmd_l in current_keys or
+                pynput_keyboard.Key.cmd_r in current_keys
+            )
+
+            try:
+                char_key = key.char.lower() if hasattr(key, 'char') and key.char else ""
+            except:
+                char_key = ""
+
+            if cmd_pressed and char_key == "i":
+                current_keys.discard(key)
+                take_screenshot()
+
+        def on_release(key):
+            current_keys.discard(key)
+
+        print("⌨️ macOS hotkey registered: Cmd+I")
+
+        listener = pynput_keyboard.Listener(
+            on_press=on_press,
+            on_release=on_release
+        )
+
+        listener.start()
+        listener.join()
     else:
         from pynput import keyboard as pynput_keyboard
 
@@ -198,6 +269,8 @@ def _print_banner(no_hotkey: bool = False):
         print("   ⚠️  No screenshot watch folders found")
     if no_hotkey:
         print("   ⚠️  Keyboard shortcut disabled (pynput not available)")
+    elif OS == "Darwin":
+        print("   ⌨️  Shortcut: Cmd + I")
     else:
         print("   ⌨️  Shortcut: Ctrl + Alt + Q")
     print(f"   📁 Save dir : {SAVE_DIR}")
