@@ -1,20 +1,80 @@
-# ── Core Dependencies (Cross-Platform) ────────────────────────────────────────
-requests>=2.31.0
-pyperclip>=1.8.2
-pillow>=10.2.0
-watchdog>=4.0.0
+# QuickClip
 
-# ── Windows Dependencies ──────────────────────────────────────────────────────
-keyboard>=0.13.5; sys_platform == 'win32'
-PyGetWindow>=0.0.9; sys_platform == 'win32'
+QuickClip is a background monitoring tool that automatically tracks clipboard text and screenshots, and displays them on a live HTML dashboard. It can also sync this data to Google Sheets and Google Drive.
 
-# ── Linux (Ubuntu/Debian etc.) Dependencies ───────────────────────────────────
-python-xlib>=0.33; sys_platform == 'linux'
-pyautogui>=0.9.54; sys_platform == 'linux'
+---
 
-# ── macOS (Darwin) Dependencies ───────────────────────────────────────────────
-pyobjc-framework-Quartz>=10.0; sys_platform == 'darwin'
-pyobjc-framework-Cocoa>=10.0; sys_platform == 'darwin'
+## 1. What It Does
 
-# ── Non-Windows Keyboard/Shortcut Dependencies ────────────────────────────────
-pynput>=1.7.6; sys_platform != 'win32'
+QuickClip runs quietly in the background and performs three jobs at once:
+
+- **Watches the clipboard** — whenever text is copied, it is saved automatically.
+- **Watches screenshot folders** — new screenshots are detected and saved.
+- **Listens for a hotkey** — pressing `Ctrl+Alt+Q` (Windows/Linux) or `Cmd+I` (macOS) captures the active window instantly.
+
+All saved data is stored in a folder (`~/QuickClip_Notes`) and shown on a dashboard page (`viewer.html`) that updates automatically.
+
+---
+
+## 2. How It Works
+
+1. On startup, three background processes begin: clipboard monitoring, screenshot folder monitoring, and hotkey listening.
+2. Captured text and images are saved locally in JSON files and an images folder.
+3. The dashboard (`viewer.html`) reads this saved data and displays it with search, filters, and image zoom.
+4. If configured, each new entry is also sent to a Google Sheet through a webhook, with screenshots uploaded to Google Drive.
+
+---
+
+## 3. Features Explained
+
+| Feature | Explanation |
+|---|---|
+| Clipboard Text Monitoring | Detects and saves any text copied by the user. |
+| Screenshot Watching | Monitors screenshot folders and saves new screenshots automatically. |
+| Clipboard Image Monitor | Captures screenshots taken by tools like Flameshot. |
+| Hotkey Screenshot | Captures the current active window on a keyboard shortcut. |
+| Windows DPI-Awareness | Ensures screenshots are captured correctly on high-resolution/scaled displays. |
+| HTML Dashboard | A dark-themed web page to search, view, and manage all saved clips and screenshots. |
+| Google Sheets Sync | Sends clipboard text and screenshots to a Google Sheet and Drive folder. |
+
+---
+
+## 4. Tools and Libraries Used
+
+- **xclip / wl-clipboard** — System utilities used on Linux to read and access clipboard content.
+- **xdotool** — Identifies the currently active window so the correct screenshot is captured.
+- **x11-utils** — Provides supporting display information on Linux.
+- **python3-tk** — A basic GUI toolkit used for simple interface elements.
+- **Clipboard-reading library (e.g., pyperclip)** — Reads copied text from the system clipboard.
+- **watchdog** — Monitors folders for new files and triggers an action when a screenshot is added. Falls back to periodic checking if unavailable.
+- **pynput** — Listens for global keyboard shortcuts to trigger screenshot capture.
+- **Image-handling library (e.g., Pillow)** — Processes, crops, and resizes screenshots, and generates thumbnails.
+- **requests (or similar)** — Sends data to the Google Sheets webhook over the internet.
+- **HTML/CSS/JavaScript** — Used to build the dashboard interface: structure, styling, and interactivity respectively.
+- **Google Apps Script** — Receives incoming data, uploads screenshots to Google Drive, and logs entries into a Google Sheet.
+
+---
+
+## 5. Folder Structure
+
+```
+e:\py
+├── README.md              Project documentation
+├── quickclip.py            Entry point of the application
+└── quickclip_core/         Core package
+    ├── config.py           OS detection and configuration
+    ├── storage.py          File reading/writing and thumbnail handling
+    ├── viewer.py           HTML dashboard generation
+    ├── clipboard.py        Clipboard monitoring logic
+    ├── screenshot.py       Screenshot detection logic
+    └── listener.py         Main runner and hotkey handling
+```
+
+---
+
+## 6. Summary Points
+
+- QuickClip is a cross-platform background tool for tracking clipboard text and screenshots.
+- Data is stored locally and displayed on a live dashboard.
+- Optional integration with Google Sheets and Google Drive via a webhook.
+- Cross-platform support required handling different permissions and tools for Windows, macOS, and Linux.
